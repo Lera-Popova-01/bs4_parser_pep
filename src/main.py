@@ -154,7 +154,7 @@ def pep(session):
             print(f"Статус в карточке: {item['page_status']}")
             print(
                 f"Ожидаемые статусы: "
-                f"{list(EXPECTED_STATUS.get(item['pep_status'][0], ())) }"
+                f"{list(EXPECTED_STATUS.get(item['pep_status'][0], ()))}"
             )
     return results
 
