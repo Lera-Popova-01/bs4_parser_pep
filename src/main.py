@@ -152,9 +152,10 @@ def pep(session):
         for item in mismatched_statuses:
             print(f"\n{item['url']}")
             print(f"Статус в карточке: {item['page_status']}")
-            print(f"Ожидаемые статусы: {list(EXPECTED_STATUS.get(
-                item['pep_status'][0], ()
-            ))}")
+            print(
+                f"Ожидаемые статусы: "
+                f"{list(EXPECTED_STATUS.get(item['pep_status'][0], ())) }"
+            )
     return results
 
 
