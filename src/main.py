@@ -5,6 +5,7 @@ import logging
 from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 from tqdm import tqdm
+from collections import defaultdict
 
 from constants import BASE_DIR, MAIN_DOC_URL, PEP_URL, EXPECTED_STATUS
 from configs import configure_argument_parser, configure_logging
@@ -25,7 +26,7 @@ def whats_new(session):
     )
     results = [('Ссылка на статью', 'Заголовок', 'Редактор, автор')]
     for section in tqdm(sections_by_python):
-        version_a_tag = section.find('a')
+        version_a_tag = find_tag(section, 'a')
         href = version_a_tag['href']
         version_link = urljoin(whats_new_url, href)
         response = get_response(session, version_link)
@@ -96,11 +97,10 @@ def get_status(dl_tag):
         if dt.get_text(strip=True).startswith('Status'):
             dd = dt.find_next_sibling('dd')
             if dd:
-                abbr = dd.find('abbr')
+                abbr = find_tag(dd, 'abbr')
                 if abbr:
                     return abbr.get_text(strip=True)
-                else:
-                    return dd.get_text(strip=True).strip()
+                return dd.get_text(strip=True).strip()
     return None
 
 
@@ -113,14 +113,12 @@ def pep(session):
         soup, 'section', attrs={'id': 'index-by-category'}
     )
     tr_tags = section_pep_list.select('section tbody tr')
-    status_counts = {}
+    status_counts = defaultdict(int)
     results = [['Статус', 'Количество']]
-    total_pep = 0
     mismatched_statuses = []
     for tr_tag in tqdm(tr_tags):
         td_tags = tr_tag.find_all('td')
         td_tag = td_tags[0].text[1:].strip()
-        total_pep += 1
         a_tag = find_tag(td_tags[1], 'a')
         pep_link = a_tag['href']
         pep_url = urljoin(PEP_URL, pep_link)
@@ -132,10 +130,6 @@ def pep(session):
             soup_pep, 'dl', attrs={'class': 'rfc2822 field-list simple'}
         )
         dd_status = get_status(dl_tag)
-        if dd_status is None:
-            continue
-        if dd_status not in status_counts:
-            status_counts[dd_status] = 0
         status_counts[dd_status] += 1
         expected_statuses = EXPECTED_STATUS.get(td_tag, ())
         if dd_status not in expected_statuses:
@@ -144,17 +138,17 @@ def pep(session):
                 'pep_status': td_tag,
                 'page_status': dd_status
             })
-        for status, count in status_counts.items():
-            results.append([status, count])
-        results.append(['Total', total_pep])
+    total_pep = sum(status_counts.values())
+    results.extend([[status, count] for status, count in status_counts.items()])
+    results.append(['Total', total_pep])
     if mismatched_statuses:
         logging.info('Несовпадающие статусы:')
         for item in mismatched_statuses:
-            print(f"\n{item['url']}")
-            print(f"Статус в карточке: {item['page_status']}")
-            print(
+            logging.info(f"\n{item['url']}")
+            logging.info(f"Статус в карточке: {item['page_status']}")
+            logging.info(
                 f"Ожидаемые статусы: "
-                f"{list(EXPECTED_STATUS.get(item['pep_status'][0], ()))}"
+                f"{list(EXPECTED_STATUS.get(item['pep_status'], ()))}"
             )
     return results
 
