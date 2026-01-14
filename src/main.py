@@ -139,7 +139,9 @@ def pep(session):
                 'page_status': dd_status
             })
     total_pep = sum(status_counts.values())
-    results.extend([[status, count] for status, count in status_counts.items()])
+    results.extend(
+        [[status, count] for status, count in status_counts.items()]
+    )
     results.append(['Total', total_pep])
     if mismatched_statuses:
         logging.info('Несовпадающие статусы:')
